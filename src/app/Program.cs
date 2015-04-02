@@ -23,7 +23,8 @@ namespace Procent.DependencyInjection.app
 
         private static void Startup(IAppBuilder app)
         {
-            var webServer = new WebServer();
+            var connectionProvider = new ConnectionProvider("local.db");
+            var webServer = new WebServer(new EmailValidator(connectionProvider), new UsersRepository(connectionProvider));
 
             // Logging
             app.Use(

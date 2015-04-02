@@ -1,53 +1,66 @@
 ﻿using System;
-using System.Linq;
-using System.Text.RegularExpressions;
 
+using NUnit.Framework;
+
+using ServiceStack.DataAnnotations;
 using ServiceStack.OrmLite;
 
 namespace Procent.DependencyInjection.app
 {
     public class WebServer
     {
-        const string EMAIL_REGEX = @"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}";
+        private readonly IEmailValidator _emailValidator;
+        private readonly IUsersRepository _usersRepository;
+
+        public WebServer(IEmailValidator emailValidator, IUsersRepository usersRepository)
+        {
+            _emailValidator = emailValidator;
+            _usersRepository = usersRepository;
+        }
 
         public void RegisterUser(string email)
         {
-            OrmLiteConfig.DialectProvider = SqliteDialect.Provider;
-            var dbFactory = new OrmLiteConnectionFactory("local.db", SqliteDialect.Provider);
-            var db = new OrmLiteConnection(dbFactory);
-            db.Open();
-
-            if (!db.TableExists<User>())
-                db.CreateTable<User>();
-
-            // check if email is valid
-            if (Regex.IsMatch(email, EMAIL_REGEX) == false)
-            {
-                throw new ArgumentException("Invalid email address");
-            }
-            
-            // check if email is not taken
-            if (db.Select<User>(u => u.Email == email).Any())
-            {
-                throw new InvalidOperationException("Email already taken");
-            }
-
-            // create new user
-            var newUser = new User
-            {
-                Email = email,
-                Name = Guid.NewGuid().ToString(),
-            };
-
-            // insert user
-            db.Insert(newUser);
+            _emailValidator.AssertEmailIsValid(email);
+            _usersRepository.AddUser(User.Create(email));
         }
     }
 
     public class User
     {
+        [AutoIncrement] 
         public int Id { get; set; }
         public string Email { get; set; }
         public string Name { get; set; }
+
+        public static User Create(string email)
+        {
+            return new User() { Email = email, Name = Guid.NewGuid().ToString() };
+        }
+    }
+
+    public class WebServerTests
+    {
+        [Test]
+        public void CannotAddTheSameEmailTwice()
+        {
+            // given
+            var connectionProvider = new ConnectionProvider(":memory:");
+            var webServer = new WebServer(new EmailValidator(connectionProvider), new UsersRepository(connectionProvider));
+            webServer.RegisterUser("MANDREK@GMAIL.COM");
+
+            // then
+            Assert.Throws<InvalidOperationException>(() => webServer.RegisterUser("MANDREK@GMAIL.COM"));
+        }
+
+        [Test]
+        public void DoesntPermitInvalidEmail()
+        {
+            // given
+            var connectionProvider = new ConnectionProvider(":memory:");
+            var webServer = new WebServer(new EmailValidator(connectionProvider), new UsersRepository(connectionProvider));
+
+            // then
+            Assert.Throws<ArgumentException>(() => webServer.RegisterUser("MANDREK"));
+        }
     }
 }
