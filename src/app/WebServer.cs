@@ -12,10 +12,8 @@ namespace Procent.DependencyInjection.app
 
         public void RegisterUser(string email)
         {
-            var connectionString = "local.db";
-            
             OrmLiteConfig.DialectProvider = SqliteDialect.Provider;
-            var dbFactory = new OrmLiteConnectionFactory(connectionString, SqliteDialect.Provider);
+            var dbFactory = new OrmLiteConnectionFactory("local.db", SqliteDialect.Provider);
             var db = new OrmLiteConnection(dbFactory);
             db.Open();
 
@@ -43,9 +41,6 @@ namespace Procent.DependencyInjection.app
 
             // insert user
             db.Insert(newUser);
-
-            // generate activation link
-            string registrationLink = string.Format("http://myapp.com/confirm?email={0}&token={1}", newUser.Email, newUser.Name);
         }
     }
 

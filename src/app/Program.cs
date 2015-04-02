@@ -25,6 +25,7 @@ namespace Procent.DependencyInjection.app
         {
             var webServer = new WebServer();
 
+            // Logging
             app.Use(
                 async (context, next) =>
                 {
@@ -40,6 +41,7 @@ namespace Procent.DependencyInjection.app
                     }
                 });
 
+            // Request handling
             app.Use((context, next) =>
             {
                 return Task.Run(() => webServer.RegisterUser(context.Request.Body.ReadLines().First()));
